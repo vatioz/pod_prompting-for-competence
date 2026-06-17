@@ -1,0 +1,73 @@
+podcast:
+  title: Prompting for Competence
+  description: Personal learning podcast feed generated from queued topics.
+  author: Vatioz
+  base_url: http://127.0.0.1:6001
+  language: en-us
+  artwork:
+    source_path: ""
+    public_url: ""
+    alt_text: ""
+worker:
+  poll_seconds: 3
+research:
+  provider: azure_foundry
+  endpoint: ''
+  model: ''
+  api_key_env: AZURE_OPENAI_API_KEY
+  timeout_seconds: 90
+  include_search_sources: true
+  allowed_domains: []
+  blocked_domains: []
+  reasoning_effort: ''
+  minimum_characters: 500
+script:
+  provider: azure_foundry
+  endpoint: ''
+  model: ''
+  api_key_env: AZURE_OPENAI_API_KEY
+  timeout_seconds: 90
+  reasoning_effort: ''
+  overview_target_minutes: 5
+  deep_dive_target_minutes: 18
+tts:
+  provider: azure_speech
+  mode: sync
+  timeout_seconds: 90
+  ffmpeg_path: ffmpeg
+  speech_endpoint: ''
+  speech_region: ''
+  speech_api_key_env: AZURE_SPEECH_KEY
+  speech_voice: ''
+  speech_output_format: audio-24khz-96kbitrate-mono-mp3
+  speech_sync_max_minutes: 9.5
+  azure_openai_endpoint: ''
+  azure_openai_api_key_env: AZURE_OPENAI_API_KEY
+  azure_openai_model: tts-1-hd
+  azure_openai_voice: alloy
+  azure_openai_response_format: mp3
+  azure_openai_speed: 1.0
+  azure_openai_max_chars_per_request: 3500
+  voice_id: REPLACE_ME
+  model_id: eleven_multilingual_v2
+  output_format: mp3_44100_128
+  base_url: https://api.elevenlabs.io
+  stability: 0.45
+  similarity_boost: 0.75
+  style: 0.2
+  use_speaker_boost: true
+publishing:
+  target: azure_static
+  public_base_url: https://podappstorage.z6.web.core.windows.net/podcast
+  export_dir: /data/publish
+  auto_publish: true
+  deploy_enabled: true
+  azure_container: $web
+  azure_path_prefix: podcast
+  azure_delete_stale: true
+  azure_allow_root_delete: false
+  azure_credential_mode: connection_string
+  azure_connection_string_env: AZURE_STORAGE_CONNECTION_STRING
+  azure_account_url: https://podappstorage.blob.core.windows.net
+ui:
+  recent_topics_limit: 12

@@ -1,0 +1,17 @@
+Topic: {topic_prompt}
+Variant: {variant_label}
+Target duration minutes: {target_minutes}
+{script_steering_block}
+You are writing a narration-ready podcast script for a single speaker.
+Use the research notes below as your grounding. Do not use web search or external tools.
+Return markdown only.
+The first line must be exactly: # {script_title}
+Write in plain spoken paragraphs, not bullets.
+Avoid stage directions, URLs, code blocks, markdown lists, and repetitive section labels.
+Expand acronyms naturally when useful and keep the script audio-native.
+Use a concise, practical, audio-native voice.
+Do not read tables, repeated labels, or obvious bullet structure out loud.
+The overview should build a strong mental model and orient the listener without repeating itself.
+Include a practical intro, a clear explanatory middle, and a concise close.
+Research notes:
+{research_markdown}

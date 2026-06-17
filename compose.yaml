@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+    container_name: pod-app
+    environment:
+      POD_RUNTIME_DIR: /data
+      POD_HOST: 0.0.0.0
+      POD_PORT: "6001"
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+    ports:
+      - "6001:6001"
+    volumes:
+      - ./runtime:/data
+    restart: unless-stopped

@@ -1,0 +1,301 @@
+:root {
+  color-scheme: dark;
+  --bg: #111827;
+  --card: #1f2937;
+  --muted: #9ca3af;
+  --text: #f3f4f6;
+  --accent: #60a5fa;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+.hero h1,
+h2 {
+  margin-top: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.9rem;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.publishing-status-card code,
+.hero code,
+.publishing-row code {
+  overflow-wrap: anywhere;
+}
+
+.publishing-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.publishing-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid #334155;
+}
+
+textarea {
+  width: 100%;
+  min-height: 8rem;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #374151;
+  background: #0f172a;
+  color: var(--text);
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+
+button.secondary {
+  background: #475569;
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+.toggles {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.topics {
+  display: grid;
+  gap: 12px;
+}
+
+.topic {
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.topic-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px;
+}
+
+.topic-summary::-webkit-details-marker {
+  display: none;
+}
+
+.topic-summary,
+.topic-summary-main,
+.topic-summary-side,
+.actions,
+.stage-header,
+.stage-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.topic-summary-main {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.topic-summary-side {
+  justify-content: flex-end;
+}
+
+.topic-prompt {
+  overflow-wrap: anywhere;
+}
+
+.episode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.16);
+  color: #bfdbfe;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.details-toggle {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.topic[open] .details-toggle::after {
+  content: " ▲";
+}
+
+.topic:not([open]) .details-toggle::after {
+  content: " ▼";
+}
+
+.topic-body {
+  padding: 0 12px 12px;
+}
+
+.meta,
+.variant-list,
+.stage-meta {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+
+.variant-list {
+  padding-left: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.stage-card {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.45);
+  border: 1px solid #334155;
+}
+
+.stage-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.stage-error,
+.error {
+  color: var(--danger);
+  margin: 8px 0 0;
+}
+
+.actions {
+  margin-top: 12px;
+}
+
+.actions form {
+  margin: 0;
+}
+
+.status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: #334155;
+}
+
+.status-ui-ok,
+.status-published,
+.status-exported,
+.status-done {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--success);
+}
+
+.status-ui-warn,
+.status-processing,
+.status-queued {
+  background: rgba(251, 191, 36, 0.18);
+  color: var(--warn);
+}
+
+.status-ui-danger,
+.status-failed,
+.status-disabled,
+.status-unpublished {
+  color: var(--danger);
+}
+
+.status-disabled {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--muted);
+}
+
+.status-unpublished {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+pre {
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--muted);
+}
+
+
+.optional-steering {
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.optional-steering > summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.steering-text {
+  color: var(--text);
+  white-space: pre-wrap;
+}

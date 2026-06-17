@@ -1,0 +1,105 @@
+{% if topics %}
+  <div class="topics">
+    {% for topic in topics %}
+      <details class="topic" data-topic-id="{{ topic.id }}">
+        <summary class="topic-summary">
+          <div class="topic-summary-main">
+            <span class="episode-badge">{{ "Episode %03d"|format(topic.episode_number) }}</span>
+            <strong class="topic-prompt">{{ topic.prompt }}</strong>
+          </div>
+          <div class="topic-summary-side">
+            <span class="status status-{{ topic.status|replace('_', '-') }}">{{ topic.status }}</span>
+            <span class="details-toggle" aria-hidden="true">Details</span>
+          </div>
+        </summary>
+
+        <div class="topic-body">
+          <div class="meta">{{ topic.created_at }} · {{ topic.slug }}</div>
+
+          {% if topic.user_inputs.script_steering %}
+            <section class="stage-card">
+              <div class="stage-header">
+                <strong>Script steering</strong>
+              </div>
+              <p class="stage-meta steering-text">{{ topic.user_inputs.script_steering }}</p>
+            </section>
+          {% endif %}
+
+          <section class="stage-card">
+            <div class="stage-header">
+              <strong>research</strong>
+              <span class="status status-{{ topic.research.status|replace('_', '-') }}">{{ topic.research.status }}</span>
+            </div>
+            {% if topic.research.path %}
+              <div class="stage-meta">{{ topic.research.path }}</div>
+            {% endif %}
+            {% if topic.research.error %}
+              <p class="stage-error">{{ topic.research.error }}</p>
+            {% endif %}
+          </section>
+
+          <div class="variant-list">
+            {% for variant_name, variant in topic.variants.items() %}
+              {% if variant.enabled %}
+                <section class="stage-card variant-card">
+                  <div class="stage-header">
+                    <strong>{{ variant_name.replace('_', ' ') }}</strong>
+                    <span class="status status-{{ variant.status|replace('_', '-') }}">{{ variant.status }}</span>
+                  </div>
+                  <div class="stage-grid">
+                    <div class="stage-row">
+                      <span>script</span>
+                      <span class="status status-{{ variant.script.status|replace('_', '-') }}">{{ variant.script.status }}</span>
+                    </div>
+                    {% if variant.script.path %}
+                      <div class="stage-meta">{{ variant.script.path }}</div>
+                    {% endif %}
+                    {% if variant.script.error %}
+                      <p class="stage-error">{{ variant.script.error }}</p>
+                    {% endif %}
+
+                    <div class="stage-row">
+                      <span>audio</span>
+                      <span class="status status-{{ variant.audio.status|replace('_', '-') }}">{{ variant.audio.status }}</span>
+                    </div>
+                    {% if variant.audio.path %}
+                      <div class="stage-meta">{{ variant.audio.path }}</div>
+                    {% endif %}
+                    {% if variant.audio.error %}
+                      <p class="stage-error">{{ variant.audio.error }}</p>
+                    {% endif %}
+
+                    <div class="stage-row">
+                      <span>publish</span>
+                      <span class="status status-{{ variant.publish.status|replace('_', '-') }}">{{ variant.publish.status }}</span>
+                    </div>
+                    {% if variant.publish.public_url %}
+                      <div class="stage-meta">{{ variant.publish.public_url }}</div>
+                    {% endif %}
+                    {% if variant.publish.error %}
+                      <p class="stage-error">{{ variant.publish.error }}</p>
+                    {% endif %}
+                  </div>
+                </section>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          {% if topic.last_error %}
+            <p class="error">{{ topic.last_error }}</p>
+          {% endif %}
+          <div class="actions">
+            <form method="post" action="{{ url_for('retry_topic_route', topic_id=topic.id) }}" data-async="true">
+              <button type="submit" class="secondary">Retry</button>
+            </form>
+            <form method="post" action="{{ url_for('unpublish_topic_route', topic_id=topic.id) }}" data-async="true">
+              <button type="submit" class="danger">Remove From Feed</button>
+            </form>
+          </div>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">No topics queued yet.</p>
+{% endif %}

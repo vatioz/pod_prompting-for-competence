@@ -1,0 +1,11 @@
+__pycache__/
+.venv/
+.venv_win/
+runtime/
+generated/
+runtime-check/
+runtime-test/
+archive/
+.git/
+.gitignore
+*.pyc
