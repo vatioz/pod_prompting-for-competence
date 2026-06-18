@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
+import os
 import re
+import tempfile
 import uuid
 
 import yaml
@@ -60,8 +63,19 @@ def load_state() -> dict:
 def save_state(state: dict) -> None:
     normalized = {"topics": _normalize_topics(state.get("topics", []))}
     TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with TOPICS_PATH.open("w", encoding="utf-8") as handle:
-        yaml.safe_dump(normalized, handle, sort_keys=False, allow_unicode=True)
+
+    fd, temp_path = tempfile.mkstemp(prefix=f".{TOPICS_PATH.name}.", suffix=".tmp", dir=str(TOPICS_PATH.parent))
+    temp_file = Path(temp_path)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            yaml.safe_dump(normalized, handle, sort_keys=False, allow_unicode=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_file, TOPICS_PATH)
+    except Exception:
+        if temp_file.exists():
+            temp_file.unlink()
+        raise
 
 
 def list_topics(limit: int | None = None, *, include_deleted: bool = False) -> list[dict]:
