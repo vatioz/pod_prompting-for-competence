@@ -8,6 +8,24 @@
   const refreshIntervalSeconds = Number(topicsRoot.dataset.refreshIntervalSeconds || "0");
   let refreshInFlight = false;
 
+  function setFormError(form, message) {
+    let errorEl = document.getElementById("submit-form-error");
+    if (!message) {
+      if (errorEl) {
+        errorEl.remove();
+      }
+      return;
+    }
+    if (!errorEl) {
+      errorEl = document.createElement("p");
+      errorEl.id = "submit-form-error";
+      errorEl.className = "error form-error";
+      errorEl.setAttribute("role", "alert");
+      form.parentNode.insertBefore(errorEl, form);
+    }
+    errorEl.textContent = message;
+  }
+
   function collectOpenTopicIds() {
     return new Set(
       Array.from(topicsRoot.querySelectorAll("details[data-topic-id][open]"), (element) => element.dataset.topicId)
@@ -46,6 +64,7 @@
   }
 
   async function submitAsyncForm(form) {
+    setFormError(form, null);
     const response = await fetch(form.action, {
       method: (form.method || "POST").toUpperCase(),
       body: new FormData(form),
@@ -54,11 +73,23 @@
       },
     });
     if (!response.ok) {
+      if (response.status === 422) {
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (error) {
+          payload = null;
+        }
+        const message = payload && typeof payload.error === "string" ? payload.error : "Please fix the form and try again.";
+        setFormError(form, message);
+        return;
+      }
       throw new Error(`Request failed: ${response.status}`);
     }
     if (form.dataset.resetOnSuccess === "true") {
       form.reset();
     }
+    setFormError(form, null);
     await refreshTopics();
   }
 

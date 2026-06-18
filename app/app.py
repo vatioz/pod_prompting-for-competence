@@ -3,7 +3,7 @@ from __future__ import annotations
 import mimetypes
 from pathlib import Path
 
-from flask import Flask, abort, redirect, render_template, request, send_file, url_for
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, url_for
 
 from .config import GENERATED_AUDIO_DIR, GENERATED_FEED_PATH, GENERATED_IMAGES_DIR, ensure_runtime_dirs, load_config
 from .publisher import rebuild_publish_outputs, rebuild_publish_outputs_and_maybe_deploy
@@ -47,14 +47,30 @@ def create_app() -> Flask:
     def _topics_fragment_response():
         return render_template("_topics_list.html", topics=_recent_topics())
 
+    def _render_index(*, validation_error: str | None = None, form_values: dict | None = None, status_code: int = 200):
+        defaults = {
+            "prompt": "",
+            "script_steering": "",
+            "variant_overview": True,
+            "variant_deep_dive": False,
+        }
+        if form_values:
+            defaults.update(form_values)
+        return (
+            render_template(
+                "index.html",
+                config=config,
+                poll_interval_seconds=POLL_INTERVAL_SECONDS,
+                topics=_recent_topics(),
+                validation_error=validation_error,
+                form_values=defaults,
+            ),
+            status_code,
+        )
+
     @app.get("/")
     def index():
-        return render_template(
-            "index.html",
-            config=config,
-            poll_interval_seconds=POLL_INTERVAL_SECONDS,
-            topics=_recent_topics(),
-        )
+        return _render_index()
 
     @app.get("/ui/topics")
     def topics_fragment():
@@ -66,7 +82,24 @@ def create_app() -> Flask:
         overview = request.form.get("variant_overview") == "on"
         deep_dive = request.form.get("variant_deep_dive") == "on"
         script_steering = request.form.get("script_steering", "")
-        create_topic(prompt=prompt, overview=overview, deep_dive=deep_dive, script_steering=script_steering)
+
+        try:
+            create_topic(prompt=prompt, overview=overview, deep_dive=deep_dive, script_steering=script_steering)
+        except ValueError as exc:
+            message = str(exc)
+            if _wants_async_response():
+                return jsonify({"error": message}), 422
+            return _render_index(
+                validation_error=message,
+                form_values={
+                    "prompt": prompt,
+                    "script_steering": script_steering,
+                    "variant_overview": overview,
+                    "variant_deep_dive": deep_dive,
+                },
+                status_code=422,
+            )
+
         app.config["WORKER"].wake()
         if _wants_async_response():
             return ("", 204)

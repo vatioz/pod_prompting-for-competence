@@ -17,19 +17,22 @@
 
       <section class="card">
         <h2>Add Topic</h2>
+        {% if validation_error %}
+          <p class="error form-error" role="alert" id="submit-form-error">{{ validation_error }}</p>
+        {% endif %}
         <form method="post" action="{{ url_for('submit_topic') }}" class="stack" data-async="true" data-reset-on-success="true">
           <label for="prompt">Prompt</label>
-          <textarea id="prompt" name="prompt" rows="6" placeholder="e.g. MCP — practical engineer explanation, what problem it solves, alternatives, where it fits"></textarea>
+          <textarea id="prompt" name="prompt" rows="6" placeholder="e.g. MCP — practical engineer explanation, what problem it solves, alternatives, where it fits">{{ form_values.prompt }}</textarea>
 
           <div class="toggles">
-            <label><input type="checkbox" name="variant_overview" checked> Overview</label>
-            <label><input type="checkbox" name="variant_deep_dive"> Deep Dive</label>
+            <label><input type="checkbox" name="variant_overview" {% if form_values.variant_overview %}checked{% endif %}> Overview</label>
+            <label><input type="checkbox" name="variant_deep_dive" {% if form_values.variant_deep_dive %}checked{% endif %}> Deep Dive</label>
           </div>
 
           <details class="optional-steering">
             <summary>Optional steering</summary>
             <label for="script_steering">Optional script steering</label>
-            <textarea id="script_steering" name="script_steering" rows="3" placeholder="e.g. Explain simply first, then connect to practical engineering tradeoffs."></textarea>
+            <textarea id="script_steering" name="script_steering" rows="3" placeholder="e.g. Explain simply first, then connect to practical engineering tradeoffs.">{{ form_values.script_steering }}</textarea>
             <p class="muted small">Used only for script writing. It does not change research behavior.</p>
           </details>
 
