@@ -253,7 +253,7 @@ def test_unpublish_route_hides_topic_from_list_and_feed(tmp_path, monkeypatch):
     assert topic["id"] not in feed_text
 
 
-def test_index_includes_auto_refresh_script_remove_from_feed_action_and_publishing_status(tmp_path, monkeypatch):
+def test_index_includes_auto_refresh_script_remove_from_feed_action_and_feed_link(tmp_path, monkeypatch):
     runtime_dir = tmp_path / "runtime"
     _write_runtime_fixture(runtime_dir)
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
@@ -276,26 +276,18 @@ def test_index_includes_auto_refresh_script_remove_from_feed_action_and_publishi
     assert 'name="script_steering"' in body
     assert 'Optional steering' in body
     assert 'Remove From Feed' in body
-    assert 'Publishing Status' in body
-    assert 'App hosted' in body
-    assert '<span>Target</span><code>app_hosted</code>' in body
-    assert '<span>Remote deploy</span><code>off</code>' in body
+    assert 'Feed: <a href="https://pod.example.com/feed.xml">https://pod.example.com/feed.xml</a>' in body
+    assert 'Publishing Status' not in body
+    assert 'Static Listener Context' not in body
 
 
-def test_index_shows_blocked_azure_publish_status_when_connection_string_missing(tmp_path, monkeypatch):
+def test_index_hides_internal_debug_details_when_topics_are_rendered(tmp_path, monkeypatch):
     runtime_dir = tmp_path / "runtime"
     _write_runtime_fixture(runtime_dir)
-    config_path = runtime_dir / "config" / "podcast.yaml"
-    config_path.write_text(
-        config_path.read_text(encoding="utf-8")
-        .replace("  target: app_hosted\n", "  target: azure_static\n")
-        .replace("  auto_publish: false\n", "  auto_publish: true\n  deploy_enabled: true\n  public_base_url: https://pod.example.com/podcast\n  azure_path_prefix: podcast\n"),
-        encoding="utf-8",
-    )
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
-    monkeypatch.delenv("AZURE_STORAGE_CONNECTION_STRING", raising=False)
 
     modules = _reload_modules()
+    topic = _create_published_topic(modules, prompt="Hide debug details")
     app = _build_test_app(modules)
     client = app.test_client()
 
@@ -306,10 +298,8 @@ def test_index_shows_blocked_azure_publish_status_when_connection_string_missing
         app.config["WORKER"].stop()
 
     assert response.status_code == 200
-    assert 'Publishing Status' in body
-    assert 'Blocked' in body
-    assert '<span>Target</span><code>azure_static</code>' in body
-    assert '<span>Remote deploy</span><code>on</code>' in body
-    assert '<span>Azure prefix</span><code>podcast</code>' in body
-    assert '<span>Credential loaded</span><code>no</code>' in body
-    assert 'AZURE_STORAGE_CONNECTION_STRING is missing in the app environment' in body
+    assert str(modules["config"].GENERATED_RESEARCH_DIR) not in body
+    assert str(modules["config"].GENERATED_AUDIO_DIR) not in body
+    assert topic["slug"] not in body
+    assert 'Publishing Status' not in body
+    assert 'Static Listener Context' not in body
