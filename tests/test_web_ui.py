@@ -156,6 +156,90 @@ def test_submit_route_creates_topic_with_episode_number_script_steering_and_asyn
     assert 'data-topics-url="/ui/topics"' in body
 
 
+def test_submit_route_async_validation_error_returns_json_and_does_not_create_topic(tmp_path, monkeypatch):
+    runtime_dir = tmp_path / "runtime"
+    _write_runtime_fixture(runtime_dir)
+    monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
+
+    modules = _reload_modules()
+    app = _build_test_app(modules)
+    client = app.test_client()
+
+    try:
+        response = client.post(
+            "/submit",
+            data={"prompt": "   ", "variant_overview": "on"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+        state = modules["storage"].load_state()
+    finally:
+        app.config["WORKER"].stop()
+
+    assert response.status_code == 422
+    assert response.is_json
+    assert response.get_json() == {"error": "Prompt is required"}
+    assert state == {"topics": []}
+
+
+def test_submit_route_async_requires_at_least_one_variant(tmp_path, monkeypatch):
+    runtime_dir = tmp_path / "runtime"
+    _write_runtime_fixture(runtime_dir)
+    monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
+
+    modules = _reload_modules()
+    app = _build_test_app(modules)
+    client = app.test_client()
+
+    try:
+        response = client.post(
+            "/submit",
+            data={
+                "prompt": "Need a validation error",
+                "script_steering": "Keep the entered steering visible.",
+            },
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+        state = modules["storage"].load_state()
+    finally:
+        app.config["WORKER"].stop()
+
+    assert response.status_code == 422
+    assert response.is_json
+    assert response.get_json() == {"error": "Select at least one episode variant"}
+    assert state == {"topics": []}
+
+
+def test_submit_route_sync_validation_error_rerenders_form_with_message_and_entered_values(tmp_path, monkeypatch):
+    runtime_dir = tmp_path / "runtime"
+    _write_runtime_fixture(runtime_dir)
+    monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
+
+    modules = _reload_modules()
+    app = _build_test_app(modules)
+    client = app.test_client()
+
+    try:
+        response = client.post(
+            "/submit",
+            data={
+                "prompt": "Need a validation error",
+                "script_steering": "Keep the entered steering visible.",
+            },
+        )
+        body = response.get_data(as_text=True)
+        state = modules["storage"].load_state()
+    finally:
+        app.config["WORKER"].stop()
+
+    assert response.status_code == 422
+    assert "Select at least one episode variant" in body
+    assert "Need a validation error" in body
+    assert "Keep the entered steering visible." in body
+    assert 'name="variant_overview" checked' not in body
+    assert 'name="variant_deep_dive" checked' not in body
+    assert state == {"topics": []}
+
+
 def test_topics_fragment_shows_episode_badge_and_collapsible_markup(tmp_path, monkeypatch):
     runtime_dir = tmp_path / "runtime"
     _write_runtime_fixture(runtime_dir)
@@ -276,7 +360,7 @@ def test_index_includes_auto_refresh_script_remove_from_feed_action_and_feed_lin
     assert 'name="script_steering"' in body
     assert 'Optional steering' in body
     assert 'name="variant_overview" checked' in body
-    assert 'name="variant_deep_dive"> Deep Dive' in body
+    assert 'name="variant_deep_dive"' in body
     assert 'name="variant_deep_dive" checked' not in body
     assert 'Remove From Feed' in body
     assert 'Feed: <a href="https://pod.example.com/feed.xml">https://pod.example.com/feed.xml</a>' in body
