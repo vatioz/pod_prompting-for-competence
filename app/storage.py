@@ -146,42 +146,113 @@ def update_topic(topic_id: str, updater) -> dict | None:
 
 def retry_topic(topic_id: str) -> dict | None:
     def apply(topic: dict) -> None:
-        topic["status"] = "queued"
         topic["last_error"] = None
-        topic["research"]["status"] = "queued"
-        topic["research"]["path"] = None
-        topic["research"]["error"] = None
+        research = topic.setdefault("research", {})
+
+        if research.get("status") == "failed":
+            research["status"] = "queued"
+            research["path"] = None
+            research["error"] = None
+            for variant in topic["variants"].values():
+                if not variant.get("enabled"):
+                    variant["status"] = "disabled"
+                    continue
+                _retry_reset_variant_from_stage(variant, stage="script")
+            topic["status"] = "queued"
+            return
+
+        did_targeted_reset = False
         for variant in topic["variants"].values():
-            if not variant["enabled"]:
+            if not variant.get("enabled"):
                 variant["status"] = "disabled"
                 continue
-            variant["status"] = "queued"
-            variant["script_path"] = None
-            variant["audio_path"] = None
-            variant["published_title"] = None
-            variant["published_at"] = None
-            variant.setdefault("script", {})
-            variant["script"]["status"] = "queued"
-            variant["script"]["path"] = None
-            variant["script"]["model"] = None
-            variant["script"]["error"] = None
-            variant.setdefault("audio", {})
-            variant["audio"]["status"] = "queued"
-            variant["audio"]["path"] = None
-            variant["audio"]["provider"] = None
-            variant["audio"]["voice"] = None
-            variant["audio"]["voice_id"] = None
-            variant["audio"]["model"] = None
-            variant["audio"]["segment_count"] = None
-            variant["audio"]["duration_seconds"] = None
-            variant["audio"]["error"] = None
-            variant.setdefault("publish", {})
-            variant["publish"]["status"] = "queued"
-            variant["publish"]["public_url"] = None
-            variant["publish"]["completed_at"] = None
-            variant["publish"]["error"] = None
+            failed_stage = _retry_detect_failed_stage(variant)
+            if failed_stage is None:
+                continue
+            _retry_reset_variant_from_stage(variant, stage=failed_stage)
+            did_targeted_reset = True
+
+        if not did_targeted_reset:
+            research["status"] = "queued"
+            research["path"] = None
+            research["error"] = None
+            for variant in topic["variants"].values():
+                if not variant.get("enabled"):
+                    variant["status"] = "disabled"
+                    continue
+                _retry_reset_variant_from_stage(variant, stage="script")
+
+        topic["status"] = recompute_topic_status(topic)
 
     return update_topic(topic_id, apply)
+
+
+def _retry_detect_failed_stage(variant: dict) -> str | None:
+    script = variant.setdefault("script", {})
+    audio = variant.setdefault("audio", {})
+    publish = variant.setdefault("publish", {})
+
+    if publish.get("status") == "failed" or publish.get("error"):
+        return "publish"
+    if audio.get("status") == "failed" or audio.get("error"):
+        return "audio"
+    if script.get("status") == "failed" or script.get("error"):
+        return "script"
+    if variant.get("status") == "failed":
+        return "script"
+    return None
+
+
+def _retry_reset_variant_from_stage(variant: dict, *, stage: str) -> None:
+    if stage == "publish":
+        _retry_reset_publish(variant)
+        variant["status"] = "generated"
+        return
+
+    if stage == "audio":
+        _retry_reset_audio(variant)
+        _retry_reset_publish(variant)
+        variant["audio_path"] = None
+        variant["status"] = "queued"
+        return
+
+    _retry_reset_script(variant)
+    _retry_reset_audio(variant)
+    _retry_reset_publish(variant)
+    variant["script_path"] = None
+    variant["audio_path"] = None
+    variant["published_title"] = None
+    variant["published_at"] = None
+    variant["status"] = "queued"
+
+
+def _retry_reset_script(variant: dict) -> None:
+    script = variant.setdefault("script", {})
+    script["status"] = "queued"
+    script["path"] = None
+    script["model"] = None
+    script["error"] = None
+
+
+def _retry_reset_audio(variant: dict) -> None:
+    audio = variant.setdefault("audio", {})
+    audio["status"] = "queued"
+    audio["path"] = None
+    audio["provider"] = None
+    audio["voice"] = None
+    audio["voice_id"] = None
+    audio["model"] = None
+    audio["segment_count"] = None
+    audio["duration_seconds"] = None
+    audio["error"] = None
+
+
+def _retry_reset_publish(variant: dict) -> None:
+    publish = variant.setdefault("publish", {})
+    publish["status"] = "queued"
+    publish["public_url"] = None
+    publish["completed_at"] = None
+    publish["error"] = None
 
 
 def unpublish_topic(topic_id: str) -> dict | None:
