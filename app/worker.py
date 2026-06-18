@@ -140,66 +140,120 @@ class DummyWorker:
         state = load_state()
         topic = next(item for item in state["topics"] if item["id"] == topic_id)
         variant = topic["variants"][variant_name]
-        label = "Overview" if variant_name == "overview" else "Deep Dive"
+
+        def _existing_done_path(stage: dict, fallback_path: str | None) -> Path | None:
+            if stage.get("status") != "done":
+                return None
+            raw_path = stage.get("path") or fallback_path
+            if not raw_path:
+                return None
+            candidate = Path(raw_path)
+            return candidate if candidate.exists() else None
+
+        script_stage = variant.setdefault("script", {})
+        audio_stage = variant.setdefault("audio", {})
+        publish_stage = variant.setdefault("publish", {})
+
+        script_path = _existing_done_path(script_stage, variant.get("script_path"))
+        audio_path = _existing_done_path(audio_stage, variant.get("audio_path"))
 
         variant["status"] = "processing"
-        variant.setdefault("script", {})["status"] = "processing"
-        variant["script"]["error"] = None
-        variant.setdefault("audio", {})["status"] = "queued"
-        variant["audio"]["error"] = None
-        variant.setdefault("publish", {})["status"] = "queued"
-        variant["publish"]["error"] = None
-        variant["publish"]["public_url"] = None
-        variant["publish"]["completed_at"] = None
+        publish_stage["status"] = publish_stage.get("status") or "queued"
+        publish_stage["error"] = None
+        publish_stage["public_url"] = None
+        publish_stage["completed_at"] = None
         topic["updated_at"] = _utc_now_iso()
         self._save(state)
 
-        try:
-            script_path = generate_script_markdown(
-                topic=topic,
-                variant_name=variant_name,
-                research_markdown=research_text,
-                output_dir=GENERATED_SCRIPTS_DIR,
-                script_config=self.config.get("script", {}),
-            )
-        except Exception as exc:
-            self._mark_variant_stage_failed(topic_id, variant_name, stage_name="script", error=str(exc))
-            raise
+        if script_path is None:
+            script_stage["status"] = "processing"
+            script_stage["error"] = None
+            topic["updated_at"] = _utc_now_iso()
+            self._save(state)
+            try:
+                script_path = generate_script_markdown(
+                    topic=topic,
+                    variant_name=variant_name,
+                    research_markdown=research_text,
+                    output_dir=GENERATED_SCRIPTS_DIR,
+                    script_config=self.config.get("script", {}),
+                )
+            except Exception as exc:
+                self._mark_variant_stage_failed(topic_id, variant_name, stage_name="script", error=str(exc))
+                raise
+
+            state = load_state()
+            topic = next(item for item in state["topics"] if item["id"] == topic_id)
+            variant = topic["variants"][variant_name]
+            script_stage = variant.setdefault("script", {})
+            audio_stage = variant.setdefault("audio", {})
+            script_stage["status"] = "done"
+            script_stage["path"] = str(script_path)
+            script_stage["model"] = self.config.get("script", {}).get("model") or self.config.get("script", {}).get("style")
+            script_stage["error"] = None
+            variant["script_path"] = str(script_path)
+            audio_stage["status"] = "queued"
+            audio_stage["error"] = None
+            topic["updated_at"] = _utc_now_iso()
+            self._save(state)
+        else:
+            state = load_state()
+            topic = next(item for item in state["topics"] if item["id"] == topic_id)
+            variant = topic["variants"][variant_name]
+            script_stage = variant.setdefault("script", {})
+            script_stage["status"] = "done"
+            script_stage["path"] = str(script_path)
+            script_stage["error"] = None
+            variant["script_path"] = str(script_path)
+            topic["updated_at"] = _utc_now_iso()
+            self._save(state)
+
+        if audio_path is None:
+            state = load_state()
+            topic = next(item for item in state["topics"] if item["id"] == topic_id)
+            variant = topic["variants"][variant_name]
+            audio_stage = variant.setdefault("audio", {})
+            audio_stage["status"] = "processing"
+            audio_stage["error"] = None
+            topic["updated_at"] = _utc_now_iso()
+            self._save(state)
+
+            audio_path = GENERATED_AUDIO_DIR / f"{topic_artifact_stem(topic, variant_name)}.mp3"
+            try:
+                audio_meta = self._materialize_audio(script_path=script_path, variant_name=variant_name, target_mp3=audio_path)
+            except Exception as exc:
+                self._mark_variant_stage_failed(topic_id, variant_name, stage_name="audio", error=str(exc))
+                raise
+
+            state = load_state()
+            topic = next(item for item in state["topics"] if item["id"] == topic_id)
+            variant = topic["variants"][variant_name]
+            audio_stage = variant.setdefault("audio", {})
+            audio_stage["status"] = "done"
+            audio_stage["path"] = str(audio_path)
+            audio_stage["provider"] = audio_meta["provider"]
+            audio_stage["voice"] = audio_meta.get("voice") or audio_meta.get("voice_id")
+            audio_stage["voice_id"] = audio_meta.get("voice_id") or audio_meta.get("voice")
+            audio_stage["model"] = audio_meta.get("model")
+            audio_stage["segment_count"] = audio_meta.get("segment_count")
+            audio_stage["duration_seconds"] = audio_meta.get("duration_seconds")
+            audio_stage["error"] = None
+            variant["audio_path"] = str(audio_path)
+            variant["published_title"] = topic_variant_title(topic, variant_name)
+            variant["status"] = "generated"
+            topic["updated_at"] = _utc_now_iso()
+            self._save(state)
+            return
 
         state = load_state()
         topic = next(item for item in state["topics"] if item["id"] == topic_id)
         variant = topic["variants"][variant_name]
-        variant["script_path"] = str(script_path)
-        variant["script"]["path"] = str(script_path)
-        variant["script"]["status"] = "done"
-        variant["script"]["model"] = self.config.get("script", {}).get("model") or self.config.get("script", {}).get("style")
-        variant["script"]["error"] = None
-        variant["audio"]["status"] = "processing"
-        variant["audio"]["error"] = None
-        topic["updated_at"] = _utc_now_iso()
-        self._save(state)
-
-        audio_path = GENERATED_AUDIO_DIR / f"{topic_artifact_stem(topic, variant_name)}.mp3"
-        try:
-            audio_meta = self._materialize_audio(script_path=script_path, variant_name=variant_name, target_mp3=audio_path)
-        except Exception as exc:
-            self._mark_variant_stage_failed(topic_id, variant_name, stage_name="audio", error=str(exc))
-            raise
-
-        state = load_state()
-        topic = next(item for item in state["topics"] if item["id"] == topic_id)
-        variant = topic["variants"][variant_name]
+        audio_stage = variant.setdefault("audio", {})
+        audio_stage["status"] = "done"
+        audio_stage["path"] = str(audio_path)
+        audio_stage["error"] = None
         variant["audio_path"] = str(audio_path)
-        variant["audio"]["path"] = str(audio_path)
-        variant["audio"]["status"] = "done"
-        variant["audio"]["provider"] = audio_meta["provider"]
-        variant["audio"]["voice"] = audio_meta.get("voice") or audio_meta.get("voice_id")
-        variant["audio"]["voice_id"] = audio_meta.get("voice_id") or audio_meta.get("voice")
-        variant["audio"]["model"] = audio_meta.get("model")
-        variant["audio"]["segment_count"] = audio_meta.get("segment_count")
-        variant["audio"]["duration_seconds"] = audio_meta.get("duration_seconds")
-        variant["audio"]["error"] = None
-        variant["published_title"] = topic_variant_title(topic, variant_name)
+        variant["published_title"] = variant.get("published_title") or topic_variant_title(topic, variant_name)
         variant["status"] = "generated"
         topic["updated_at"] = _utc_now_iso()
         self._save(state)
