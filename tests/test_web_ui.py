@@ -275,6 +275,9 @@ def test_index_includes_auto_refresh_script_remove_from_feed_action_and_feed_lin
     assert 'data-async="true"' in body
     assert 'name="script_steering"' in body
     assert 'Optional steering' in body
+    assert 'name="variant_overview" checked' in body
+    assert 'name="variant_deep_dive"> Deep Dive' in body
+    assert 'name="variant_deep_dive" checked' not in body
     assert 'Remove From Feed' in body
     assert 'Feed: <a href="https://pod.example.com/feed.xml">https://pod.example.com/feed.xml</a>' in body
     assert 'Publishing Status' not in body
