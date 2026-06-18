@@ -12,30 +12,7 @@
       <section class="card hero">
         <h1>{{ config.podcast.title }}</h1>
         <p class="muted">Phone-first topic capture with visible research, script, audio, and publish stages.</p>
-        <p class="muted small">Generated feed: <code>{{ config.podcast.base_url }}/feed.xml</code></p>
-      </section>
-
-      <section class="card publishing-status-card">
-        <div class="section-header">
-          <h2>Publishing Status</h2>
-          <span class="status status-ui-{{ publishing_status.readiness_tone }}">{{ publishing_status.readiness }}</span>
-        </div>
-        <p class="muted small">{{ publishing_status.readiness_detail }}</p>
-        <div class="publishing-grid">
-          <div class="publishing-row"><span>Target</span><code>{{ publishing_status.target }}</code></div>
-          <div class="publishing-row"><span>Auto publish</span><code>{{ 'on' if publishing_status.auto_publish else 'off' }}</code></div>
-          <div class="publishing-row"><span>Remote deploy</span><code>{{ 'on' if publishing_status.deploy_enabled else 'off' }}</code></div>
-          <div class="publishing-row"><span>Feed URL</span><code>{{ publishing_status.effective_feed_url }}</code></div>
-          {% if publishing_status.target == 'azure_static' %}
-            <div class="publishing-row"><span>Azure container</span><code>{{ publishing_status.azure_container }}</code></div>
-            <div class="publishing-row"><span>Azure prefix</span><code>{{ publishing_status.azure_path_prefix or '(root)' }}</code></div>
-            <div class="publishing-row"><span>Connection string env</span><code>{{ publishing_status.azure_connection_string_env }}</code></div>
-            <div class="publishing-row"><span>Credential loaded</span><code>{{ 'yes' if publishing_status.azure_connection_string_present else 'no' }}</code></div>
-          {% endif %}
-        </div>
-        {% if publishing_status.latest_publish_error %}
-          <p class="error">Latest publish error: {{ publishing_status.latest_publish_error }}</p>
-        {% endif %}
+        <p class="muted small">Feed: <a href="{{ config.podcast.base_url }}/feed.xml">{{ config.podcast.base_url }}/feed.xml</a></p>
       </section>
 
       <section class="card">
@@ -68,11 +45,6 @@
         <div id="topics-list" data-topics-url="{{ url_for('topics_fragment') }}" data-refresh-interval-seconds="{{ poll_interval_seconds }}">
           {% include '_topics_list.html' %}
         </div>
-      </section>
-
-      <section class="card collapsed-note">
-        <h2>Static Listener Context</h2>
-        <pre>{{ listener_profile }}</pre>
       </section>
     </main>
   </body>
