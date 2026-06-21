@@ -82,7 +82,7 @@ def test_azure_speech_synthesizes_script_to_mp3_via_sdk_endpoint(tmp_path, monke
         tts_config={
             'provider': 'azure_speech',
             'mode': 'sync',
-            'speech_endpoint': 'https://test-speech-resource.cognitiveservices.azure.com/',
+            'speech_endpoint': 'https://example-speech-resource.cognitiveservices.azure.com/',
             'speech_api_key_env': 'AZURE_SPEECH_KEY',
             'speech_voice': 'en-US-Ava:DragonHDLatestNeural',
             'speech_output_format': 'audio-24khz-96kbitrate-mono-mp3',
@@ -100,7 +100,7 @@ def test_azure_speech_synthesizes_script_to_mp3_via_sdk_endpoint(tmp_path, monke
 
     call = _FakeSpeechSynthesizer.last_call
     assert call['speech_config'].subscription == 'speech-test-key'
-    assert call['speech_config'].endpoint == 'https://test-speech-resource.cognitiveservices.azure.com'
+    assert call['speech_config'].endpoint == 'https://example-speech-resource.cognitiveservices.azure.com'
     assert call['speech_config'].region is None
     assert call['speech_config'].speech_synthesis_voice_name == 'en-US-Ava:DragonHDLatestNeural'
     assert call['speech_config'].output_format == 'Audio24Khz96KBitRateMonoMp3'
@@ -195,7 +195,7 @@ def test_azure_speech_surfaces_sdk_cancellation_details(tmp_path, monkeypatch):
             tts_config={
                 'provider': 'azure_speech',
                 'mode': 'sync',
-                'speech_endpoint': 'https://test-speech-resource.cognitiveservices.azure.com/',
+                'speech_endpoint': 'https://example-speech-resource.cognitiveservices.azure.com/',
                 'speech_api_key_env': 'AZURE_SPEECH_KEY',
                 'speech_voice': 'en-US-Ava:DragonHDLatestNeural',
                 'speech_output_format': 'audio-24khz-96kbitrate-mono-mp3',

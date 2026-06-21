@@ -1040,7 +1040,7 @@ def test_worker_can_use_azure_speech_for_audio(tmp_path, monkeypatch):
                     "tts:",
                     "  provider: azure_speech",
                     "  mode: sync",
-                    "  speech_endpoint: https://test-speech-resource.cognitiveservices.azure.com",
+                    "  speech_endpoint: https://example-speech-resource.cognitiveservices.azure.com",
                     "  speech_api_key_env: AZURE_SPEECH_KEY",
                     "  speech_voice: en-US-Ava:DragonHDLatestNeural",
                     "  speech_output_format: audio-24khz-96kbitrate-mono-mp3",
