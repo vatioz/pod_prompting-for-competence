@@ -14,5 +14,12 @@ Do not read tables, repeated labels, or obvious bullet structure out loud.
 The deep dive should assume the overview already covered the basics, then go deeper into mechanics, tradeoffs, failure modes, and practical engineering understanding.
 Avoid repeating the same points from the overview unless repetition is necessary for clarity.
 Include a practical intro, a clear explanatory middle, and a concise close.
+HUMAN VOICE AND UNSLOP RULES:
+    - Sound like a thoughtful engineer speaking to one experienced listener, not like a brochure or a generated summary.
+    - Prefer concrete facts, examples, and strong verbs. Cut hype, filler, vague claims, and abstract metaphors.
+    - Avoid AI-flavored phrases such as "pivotal moment," "evolving landscape," "testament to," "delve," "showcase," and "not just X, but Y."
+    - Do not force ideas into groups of three or rotate through synonyms for the same idea. Repeat the clearest term.
+    - Vary the rhythm. Let the speaker have opinions and acknowledge tradeoffs instead of giving a polished list of generic pros and cons.
+    - Use commas or separate sentences for pauses. Never use em dashes as conversational stage directions.
 Research notes:
 {research_markdown}
