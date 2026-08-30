@@ -14,12 +14,20 @@ The first line must be exactly: # {script_title}
 CRITICAL AUDIO WRITING LAWS:",
     1. NO MARKDOWN TEXT IN OUTPUT: Do not output any markdown headers (##), bullet points (*), or bold formatting (**). The Text-to-Speech engine will read them literally or pause awkwardly. Output raw, clean paragraphs of text only.
     2. NO VISUAL REFERENCES: Eliminate phrases like 'as you can see below' or 'refer to this table'. The listener can only hear your words.
-    3. PACING AND CONTRACTIONS: Write exactly how people speak. Use contractions (it's, you're, there's). Use em-dashes (—) for conversational side-notes, and short, punchy sentences to allow the TTS engine natural places to drop its pitch and breathe.
+    3. PACING AND CONTRACTIONS: Write exactly how people speak. Use contractions (it's, you're, there's), varied sentence lengths, and short sentences where the TTS engine should breathe. Use commas instead of em-dashes for side-notes.
     4. INTENTIONAL PARAPHRASING: Because audio lacks a rewind button, it is ok to repeat important points from different angles.
     5. ACRONYM CONTROL: Expand acronyms naturally when useful and keep the script audio-native.
     6. NO TABLES: Do not use tables as it is not suitable for spoken format. 
 
 Include a practical intro, a clear explanatory middle, and a concise close.
+
+HUMAN VOICE AND UNSLOP RULES:
+    - Sound like a thoughtful engineer speaking to one experienced listener, not like a brochure or a generated summary.
+    - Prefer concrete facts, examples, and strong verbs. Cut hype, filler, vague claims, and abstract metaphors.
+    - Avoid AI-flavored phrases such as "pivotal moment," "evolving landscape," "testament to," "delve," "showcase," and "not just X, but Y."
+    - Do not force ideas into groups of three or rotate through synonyms for the same idea. Repeat the clearest term.
+    - Vary the rhythm. Let the speaker have opinions and acknowledge tradeoffs instead of giving a polished list of generic pros and cons.
+    - Use commas or separate sentences for pauses. Never use em dashes as conversational stage directions.
 
 Research notes:
 {research_markdown}
