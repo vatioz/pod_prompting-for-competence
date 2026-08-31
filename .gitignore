@@ -16,9 +16,6 @@ runtime/
 generated/
 runtime-check/
 runtime-test/
-.hermes/
-archive/
-app/assets/sample_audio/
 
 *.log
 .DS_Store

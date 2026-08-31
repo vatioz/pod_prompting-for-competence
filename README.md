@@ -1,12 +1,12 @@
 # Prompting for Competence
 
-Prompting for Competence is a small Flask app for turning queued learning topics into podcast episodes.
+Turn a one-line learning topic into a private podcast episode you can listen to on your commute.
 
-It provides:
-- a web UI for submitting topics
-- overview and deep-dive episode variants
-- a background worker that runs research, script generation, audio synthesis, and publishing
-- podcast feed publishing either from the app itself or through an Azure Static Website export/deploy flow
+Submit a topic in a small web UI; a background worker researches it with web search, writes a narration script, synthesizes audio, and publishes it to an RSS feed your podcast app can subscribe to. Each topic can produce a short **Overview** and a longer **Deep Dive**.
+
+Built on Flask with file-backed state — no database, no queue broker. Bring your own Azure OpenAI / Azure Speech or ElevenLabs keys.
+
+> **Not hardened for the public internet.** There is no authentication on any route. Run it locally or behind something that authenticates. See [SECURITY.md](SECURITY.md).
 
 ## Current implementation status
 
@@ -27,9 +27,11 @@ Not implemented yet:
 - `app/` - Flask app, worker, pipeline stages, templates, and static assets
 - `config/` - seed configuration and prompt templates copied into the runtime directory on first startup
 - `data/` - seed topic state copied into the runtime directory on first startup
+- `docs/architecture.md` - how the pipeline, state model, and publishing actually work
 - `scripts/run_app.py` - Waitress entrypoint
 - `tests/` - automated tests for the pipeline, UI, feed generation, and Azure publishing logic
 - `runtime/` - live mutable app state when running locally or in Docker; ignored by git
+
 
 ## Runtime model
 
@@ -68,7 +70,7 @@ In this mode the app serves:
 - `/audio/<file>`
 - `/images/<file>`
 
-This is the simplest local-preview setup.
+This is the simplest local-preview setup, and it is the default in the seed config.
 
 ### Azure Static Website export and deploy
 
@@ -84,6 +86,7 @@ If `publishing.deploy_enabled: true`, it also uploads that bundle to Azure Blob 
 Important:
 - `publishing.auto_publish: true` means a generated episode will immediately enter the publishing step
 - if `publishing.target` is `azure_static` and `publishing.deploy_enabled` is true, the app needs `AZURE_STORAGE_CONNECTION_STRING`
+- deploying **deletes** remote files under `publishing.azure_path_prefix` that are not part of the current bundle, so the published site matches local state — always set a prefix, and never point it at a container holding unrelated content
 - for local-only work, the easiest path is to switch to an app-hosted target or set `publishing.deploy_enabled: false`
 
 ## Configuration
@@ -106,11 +109,14 @@ Prompt templates are loaded from the runtime prompt files:
 
 ## Environment variables
 
-The Docker setup expects these in `.env`:
-- `AZURE_OPENAI_API_KEY`
-- `AZURE_SPEECH_KEY`
-- `ELEVENLABS_API_KEY`
-- `AZURE_STORAGE_CONNECTION_STRING`
+Copy `.env.example` to `.env` and fill in only what you actually use:
+
+| Variable | Needed when |
+|---|---|
+| `AZURE_OPENAI_API_KEY` | always — research and script generation |
+| `AZURE_SPEECH_KEY` | `tts.provider: azure_speech` |
+| `ELEVENLABS_API_KEY` | `tts.provider: elevenlabs` |
+| `AZURE_STORAGE_CONNECTION_STRING` | `publishing.target: azure_static` with `deploy_enabled: true` |
 
 The research and script stages also support endpoint/model fallbacks from environment variables if they are not set in YAML:
 - `AZURE_OPENAI_ENDPOINT`
@@ -139,7 +145,6 @@ Open:
 ### Linux or macOS
 
 ```bash
-cd /workspace/pod
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -149,7 +154,6 @@ python scripts/run_app.py
 ### Windows PowerShell
 
 ```powershell
-cd C:\workspace\pod
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -158,14 +162,30 @@ python scripts\run_app.py
 
 ## Development notes
 
-- sample audio files under `app/assets/sample_audio/` are local assets and are ignored by git
 - `runtime/`, generated outputs, and secrets in `.env` are intentionally not committed
 - if you change seed defaults in `config/` or `data/`, existing runtime files are not overwritten automatically
+- `config/research-profile.md` and `config/script-guidance.md` are reference notes, not read by the app; the live prompts are under `config/prompts/`
+- see [docs/architecture.md](docs/architecture.md) for the pipeline, state model, and deploy guardrails
+- see [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request
 
 ## Tests
 
-Run the test suite with:
+Install the dev dependencies, then run the suite:
 
 ```bash
+pip install -r requirements-dev.txt
 PYTHONPATH=. pytest
 ```
+
+On Windows PowerShell:
+
+```powershell
+pip install -r requirements-dev.txt
+$env:PYTHONPATH="."; pytest
+```
+
+The tests stub every external service, so they need no API keys and make no network calls.
+
+## License
+
+[MIT](LICENSE)

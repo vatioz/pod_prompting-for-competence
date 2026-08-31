@@ -1,0 +1,64 @@
+name: Bug report
+description: Something isn't working as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please don't paste API keys, connection strings, or real endpoint hostnames.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Which stage failed?
+      options:
+        - Research
+        - Script
+        - Audio (TTS)
+        - Publish / deploy
+        - Web UI
+        - Startup / config
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error text
+      description: >
+        Each stage stores its own `error` field in `runtime/data/topics.yaml`.
+        Paste that plus any console output.
+      render: text
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config
+      description: Your `podcast.yaml` with secrets and real hostnames removed.
+      render: yaml
+
+  - type: input
+    id: providers
+    attributes:
+      label: Providers in use
+      placeholder: "tts.provider: azure_speech, publishing.target: app_hosted"
+
+  - type: input
+    id: environment
+    attributes:
+      label: How are you running it?
+      placeholder: "Docker compose / local venv, Python 3.11, macOS"
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce

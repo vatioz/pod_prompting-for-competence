@@ -1,7 +1,7 @@
 podcast:
   title: Prompting for Competence
   description: Personal learning podcast feed generated from queued topics.
-  author: Vatioz
+  author: Your Name
   base_url: http://127.0.0.1:6001
   language: en-us
   artwork:
@@ -48,7 +48,8 @@ tts:
   azure_openai_response_format: mp3
   azure_openai_speed: 1.0
   azure_openai_max_chars_per_request: 3500
-  voice_id: REPLACE_ME
+  # ElevenLabs settings, used only when provider is elevenlabs
+  voice_id: ""
   model_id: eleven_multilingual_v2
   output_format: mp3_44100_128
   base_url: https://api.elevenlabs.io
@@ -57,17 +58,31 @@ tts:
   style: 0.2
   use_speaker_boost: true
 publishing:
-  target: azure_static
-  public_base_url: https://podappstorage.z6.web.core.windows.net/podcast
+  # Default is app-hosted preview: the app serves /feed.xml and /audio/<file>
+  # itself and never touches remote infrastructure.
+  #
+  # To publish to an Azure Storage static website instead, set:
+  #   target: azure_static
+  #   deploy_enabled: true
+  #   public_base_url: https://<account>.z6.web.core.windows.net/<prefix>
+  #   azure_account_url: https://<account>.blob.core.windows.net
+  #   azure_path_prefix: <prefix>
+  # and provide AZURE_STORAGE_CONNECTION_STRING.
+  #
+  # Note: deploying deletes remote files under azure_path_prefix that are not
+  # part of the current bundle. Always set a prefix; never point this at a
+  # container holding unrelated content.
+  target: app_hosted
+  public_base_url: ""
   export_dir: /data/publish
-  auto_publish: true
-  deploy_enabled: true
+  auto_publish: false
+  deploy_enabled: false
   azure_container: $web
   azure_path_prefix: podcast
   azure_delete_stale: true
   azure_allow_root_delete: false
   azure_credential_mode: connection_string
   azure_connection_string_env: AZURE_STORAGE_CONNECTION_STRING
-  azure_account_url: https://podappstorage.blob.core.windows.net
+  azure_account_url: ""
 ui:
   recent_topics_limit: 12

@@ -38,7 +38,7 @@ DEFAULT_CONFIG = {
     "podcast": {
         "title": "Prompting for Competence",
         "description": "Personal learning podcast feed generated from queued topics.",
-        "author": "Vatioz",
+        "author": "Your Name",
         "base_url": "http://127.0.0.1:6001",
         "language": "en-us",
         "artwork": {
