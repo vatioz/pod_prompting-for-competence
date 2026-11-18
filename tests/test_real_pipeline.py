@@ -6,6 +6,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+import pytest
+
 
 class _FakeElevenLabsHandler(BaseHTTPRequestHandler):
     requests = []
@@ -330,6 +332,7 @@ def _reload_modules():
     }
 
 
+@pytest.mark.integration
 def test_generate_research_creates_structured_non_placeholder_markdown(tmp_path, monkeypatch):
     server = _start_fake_foundry_server()
     try:
@@ -569,6 +572,7 @@ def test_create_topic_persists_and_normalizes_optional_script_steering(tmp_path,
     assert loaded["topics"][1]["user_inputs"]["script_steering"] == "Explain like I'm 5 first, then connect it back to real systems."
 
 
+@pytest.mark.integration
 def test_worker_generates_real_artifacts_and_calls_elevenlabs(tmp_path, monkeypatch):
     server = _start_fake_server()
     foundry_server = _start_fake_foundry_server()
@@ -624,6 +628,7 @@ def test_worker_generates_real_artifacts_and_calls_elevenlabs(tmp_path, monkeypa
         foundry_server.shutdown()
         foundry_server.server_close()
 
+@pytest.mark.integration
 def test_generate_research_uses_foundry_web_search_and_normalizes_sources(tmp_path, monkeypatch):
     server = _start_fake_foundry_server()
     try:
@@ -675,6 +680,7 @@ def test_generate_research_uses_foundry_web_search_and_normalizes_sources(tmp_pa
         server.server_close()
 
 
+@pytest.mark.integration
 def test_generate_script_markdown_uses_foundry_llm_without_web_search(tmp_path, monkeypatch):
     server = _start_fake_foundry_server()
     try:
@@ -765,6 +771,7 @@ def test_generate_script_markdown_uses_foundry_llm_without_web_search(tmp_path, 
         server.server_close()
 
 
+@pytest.mark.integration
 def test_worker_can_use_foundry_for_research_and_elevenlabs_for_audio(tmp_path, monkeypatch):
     foundry_server = _start_fake_foundry_server()
     elevenlabs_server = _start_fake_server()
@@ -851,6 +858,7 @@ def test_worker_can_use_foundry_for_research_and_elevenlabs_for_audio(tmp_path, 
         elevenlabs_server.server_close()
 
 
+@pytest.mark.integration
 def test_worker_can_use_foundry_for_script_and_elevenlabs_for_audio(tmp_path, monkeypatch):
     foundry_server = _start_fake_foundry_server()
     elevenlabs_server = _start_fake_server()
@@ -943,6 +951,7 @@ def test_worker_can_use_foundry_for_script_and_elevenlabs_for_audio(tmp_path, mo
 
 
 
+@pytest.mark.integration
 def test_worker_can_use_azure_speech_for_audio(tmp_path, monkeypatch):
     class _FakeSpeechConfig:
         def __init__(self, subscription=None, endpoint=None, region=None):
@@ -1082,6 +1091,7 @@ def test_worker_can_use_azure_speech_for_audio(tmp_path, monkeypatch):
         foundry_server.server_close()
 
 
+@pytest.mark.integration
 def test_worker_marks_failed_stage_and_error_when_audio_generation_fails(tmp_path, monkeypatch):
     foundry_server = _start_fake_foundry_server()
     runtime_dir = tmp_path / "runtime"

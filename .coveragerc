@@ -1,0 +1,17 @@
+[run]
+source = app, scripts
+
+[report]
+fail_under = 100
+precision = 2
+show_missing = True
+exclude_lines =
+
+[json]
+output = coverage/python.json
+
+[xml]
+output = coverage/python.xml
+
+[html]
+directory = coverage/python-html

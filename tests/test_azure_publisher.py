@@ -178,7 +178,7 @@ def test_create_app_startup_does_not_remote_deploy(tmp_path, monkeypatch):
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
 
     modules = _reload_modules()
-    modules["worker"].DummyWorker.start = lambda self: None
+    monkeypatch.setattr(modules["worker"].DummyWorker, "start", lambda self: None)
 
     def fail_deploy(*args, **kwargs):
         raise AssertionError("startup should not deploy")

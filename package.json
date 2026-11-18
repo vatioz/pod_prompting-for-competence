@@ -1,0 +1,18 @@
+{
+  "name": "pod-prompting-for-competence-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/js/*.test.cjs",
+    "test:coverage": "c8 --all --include=app/static/**/*.js --exclude-after-remap --check-coverage --lines=100 --per-file --reporter=text --reporter=json --reporter=json-summary --reporter=lcov --reporter=html --reports-dir=coverage/javascript node --test tests/js/*.test.cjs"
+  },
+  "devDependencies": {
+    "c8": "^12.0.0",
+    "jsdom": "^31.0.1"
+  },
+  "overrides": {
+    "test-exclude": {
+      "glob": "^14.0.6",
+      "minimatch": "^11.0.9"
+    }
+  }
+}

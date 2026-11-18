@@ -86,7 +86,7 @@ def _build_container_client(publishing_config: dict):
 
     try:
         from azure.storage.blob import BlobServiceClient, ContentSettings
-    except ImportError as exc:  # pragma: no cover - import failure depends on environment
+    except ImportError as exc:
         raise RuntimeError(
             "azure-storage-blob is required for Azure static publishing. Install dependencies from requirements.txt."
         ) from exc

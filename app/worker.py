@@ -43,7 +43,7 @@ class DummyWorker:
         while not self._stop_event.is_set():
             try:
                 worked = self.process_once()
-            except Exception as exc:  # pragma: no cover - defensive logging path
+            except Exception as exc:
                 print(f"[worker] unexpected error: {exc}")
                 worked = False
             if worked:

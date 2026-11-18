@@ -32,6 +32,10 @@ Not implemented yet:
 - `tests/` - automated tests for the pipeline, UI, feed generation, and Azure publishing logic
 - `runtime/` - live mutable app state when running locally or in Docker; ignored by git
 
+## Unit coverage
+
+CI requires **100% line coverage** independently for all Python application/startup sources and all browser JavaScript sources. Unit tests use temporary runtime files and fake service boundaries; loopback HTTP integration tests run separately and do not count toward coverage. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, exact commands, and report locations.
+
 
 ## Runtime model
 

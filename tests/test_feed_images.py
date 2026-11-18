@@ -86,7 +86,7 @@ def test_app_hosted_serves_local_show_art(tmp_path, monkeypatch):
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
 
     modules = _reload_modules()
-    modules["app"].DummyWorker.start = lambda self: None
+    monkeypatch.setattr(modules["app"].DummyWorker, "start", lambda self: None)
     app = modules["app"].create_app()
     app.config["TESTING"] = True
     client = app.test_client()
@@ -127,7 +127,7 @@ def test_missing_local_show_art_does_not_crash_or_emit_broken_feed_image(tmp_pat
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
 
     modules = _reload_modules()
-    modules["app"].DummyWorker.start = lambda self: None
+    monkeypatch.setattr(modules["app"].DummyWorker, "start", lambda self: None)
     app = modules["app"].create_app()
     app.config["TESTING"] = True
     client = app.test_client()
@@ -140,3 +140,32 @@ def test_missing_local_show_art_does_not_crash_or_emit_broken_feed_image(tmp_pat
 
     assert 'itunes:image href=' not in feed_text
     assert image_response.status_code == 404
+
+
+def test_artwork_sync_removes_obsolete_suffix_and_keeps_current_name(tmp_path, monkeypatch):
+    from app import publisher
+
+    source = tmp_path / "source.png"
+    source.write_bytes(b"new-artwork")
+    images = tmp_path / "images"
+    images.mkdir()
+    (images / "podcast-cover.jpg").write_bytes(b"obsolete")
+    (images / "podcast-cover.png").write_bytes(b"previous")
+    (images / "unrelated.jpg").write_bytes(b"keep")
+    cfg = {"podcast": {"artwork": {"source_path": str(source)}}}
+    result = publisher._sync_show_artwork(cfg, images)
+    assert result["mode"] == "local"
+    assert (images / "podcast-cover.png").read_bytes() == b"new-artwork"
+    assert not (images / "podcast-cover.jpg").exists()
+    assert (images / "unrelated.jpg").read_bytes() == b"keep"
+
+
+def test_missing_artwork_logs_explicit_warning(tmp_path, caplog):
+    from app import publisher
+
+    missing = tmp_path / "absent.png"
+    result = publisher._sync_show_artwork({"podcast": {"artwork": {"source_path": str(missing)}}}, tmp_path / "images")
+    assert result["mode"] == "missing"
+    assert str(missing) in result["error"]
+    assert result["error"] in caplog.text
+    assert not (tmp_path / "images").exists()

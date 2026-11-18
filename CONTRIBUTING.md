@@ -8,15 +8,31 @@ Thanks for taking a look. This is a personal side project, so keep expectations 
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt -r requirements-dev.txt
+npm ci                            # Node.js 26
 ```
 
-Run the test suite:
+Run the unit coverage gates (both must reach **100% line coverage**):
 
 ```bash
-PYTHONPATH=. pytest                # Windows: $env:PYTHONPATH="."; pytest
+python -m coverage run -m pytest -m "not integration" -q
+python -m coverage report
+python -m coverage json
+python -m coverage xml
+python -m coverage html
+npm run test:coverage
 ```
 
-The tests stub every external service. They make no network calls and need no API keys, so a clean checkout should go green immediately. If it does not, that is a bug worth reporting.
+Python coverage includes every source under `app/` and `scripts/`, including the startup script and defensive error paths. Browser coverage includes every JavaScript source under `app/static/` and enforces the line threshold per file. Reports are written to the ignored `coverage/` directory: Python JSON/XML/HTML and browser JSON/LCOV/HTML. CI uploads these reports as the `unit-coverage` artifact. The target is line coverage, not a claim of exhaustive branch or production-service testing; do not add coverage exclusions to make the gates pass.
+
+Unit tests isolate runtime files in temporary directories, stub service boundaries, and reject socket connections and binds. They need no API keys. DOM-based browser tests execute the real browser script with fake HTTP responses and timers. The `test-exclude` dependency overrides in `package.json` keep coverage tooling on patched glob/minimatch releases.
+
+Run the loopback HTTP integration tests separately; they do **not** contribute to the unit coverage result:
+
+```bash
+python -m pytest -m integration -q
+```
+
+These integration tests also stub external providers; only local loopback connections are permitted. `python -m pytest -q` runs both Python groups without measuring coverage.
 
 Run the app:
 
@@ -36,7 +52,7 @@ Read [docs/architecture.md](docs/architecture.md) before making non-trivial chan
 
 ## Pull requests
 
-CI runs the test suite and a Docker build on every PR. Both must pass.
+CI enforces both unit coverage gates, runs the loopback integration tests separately, and builds Docker on every PR. All checks must pass.
 
 Keep PRs focused on one thing, and describe what you changed and why. If you're planning something large, open an issue first so we can agree on the shape before you write it.
 

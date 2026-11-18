@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+import pytest
+
 
 def _write_runtime_fixture(runtime_dir: Path) -> None:
     (runtime_dir / "config" / "prompts").mkdir(parents=True, exist_ok=True)
@@ -70,8 +72,8 @@ def _reload_modules():
     }
 
 
-def _build_test_app(modules):
-    modules["worker"].DummyWorker.start = lambda self: None
+def _build_test_app(modules, monkeypatch):
+    monkeypatch.setattr(modules["worker"].DummyWorker, "start", lambda self: None)
     app = modules["app"].create_app()
     app.config["TESTING"] = True
     return app
@@ -128,7 +130,7 @@ def test_submit_route_creates_topic_with_episode_number_script_steering_and_asyn
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
 
     modules = _reload_modules()
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -162,7 +164,7 @@ def test_submit_route_async_validation_error_returns_json_and_does_not_create_to
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
 
     modules = _reload_modules()
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -187,7 +189,7 @@ def test_submit_route_async_requires_at_least_one_variant(tmp_path, monkeypatch)
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
 
     modules = _reload_modules()
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -215,7 +217,7 @@ def test_submit_route_sync_validation_error_rerenders_form_with_message_and_ente
     monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
 
     modules = _reload_modules()
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -247,7 +249,7 @@ def test_topics_fragment_shows_episode_badge_and_collapsible_markup(tmp_path, mo
 
     modules = _reload_modules()
     modules["storage"].create_topic(prompt="Episode list view", overview=True, deep_dive=False)
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -275,7 +277,7 @@ def test_topics_fragment_shows_saved_script_steering_in_details(tmp_path, monkey
         deep_dive=False,
         script_steering="Focus on failure modes and compare it to VPNs.",
     )
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -296,7 +298,7 @@ def test_refresh_script_preserves_open_topic_details(tmp_path, monkeypatch):
 
     modules = _reload_modules()
     topic = modules["storage"].create_topic(prompt="Keep details open", overview=True, deep_dive=False)
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -314,7 +316,7 @@ def test_unpublish_route_hides_topic_from_list_and_feed(tmp_path, monkeypatch):
 
     modules = _reload_modules()
     topic = _create_published_topic(modules)
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -344,7 +346,7 @@ def test_index_includes_auto_refresh_script_remove_from_feed_action_and_feed_lin
 
     modules = _reload_modules()
     _create_published_topic(modules, prompt="Refresh me")
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:
@@ -368,6 +370,97 @@ def test_index_includes_auto_refresh_script_remove_from_feed_action_and_feed_lin
     assert 'Static Listener Context' not in body
 
 
+@pytest.fixture
+def web_app(tmp_path, monkeypatch):
+    runtime_dir = tmp_path / "runtime"
+    _write_runtime_fixture(runtime_dir)
+    monkeypatch.setenv("POD_RUNTIME_DIR", str(runtime_dir))
+    modules = _reload_modules()
+    app = _build_test_app(modules, monkeypatch)
+    yield app, modules
+    app.config["WORKER"].stop()
+
+
+@pytest.mark.parametrize("action", ["retry", "unpublish"])
+def test_unknown_topic_actions_return_not_found(web_app, action):
+    app, _ = web_app
+    with app.test_client() as client:
+        response = client.post(f"/topics/missing/{action}")
+        assert response.status_code == 404
+
+
+def test_synchronous_submit_redirects_and_wakes_worker(web_app, monkeypatch):
+    app, modules = web_app
+    wakes = []
+    monkeypatch.setattr(app.config["WORKER"], "wake", lambda: wakes.append(True))
+    response = app.test_client().post("/submit", data={"prompt": "Synchronous submission", "variant_overview": "on"})
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
+    assert wakes == [True]
+    assert modules["storage"].load_state()["topics"][0]["prompt"] == "Synchronous submission"
+
+
+@pytest.mark.parametrize("async_request", [False, True])
+def test_retry_route_wakes_worker_and_preserves_research_when_possible(web_app, monkeypatch, async_request):
+    app, modules = web_app
+    topic = modules["storage"].create_topic("Retry route", True, False)
+    modules["storage"].update_topic(topic["id"], lambda item: item["research"].update(status="failed", error="provider unavailable"))
+    wakes = []
+    monkeypatch.setattr(app.config["WORKER"], "wake", lambda: wakes.append(True))
+    response = app.test_client().post(f"/topics/{topic['id']}/retry", headers={"X-Requested-With": "XMLHttpRequest"} if async_request else {})
+    assert response.status_code == (204 if async_request else 302)
+    if not async_request:
+        assert response.headers["Location"] == "/"
+    assert wakes == [True]
+    updated = modules["storage"].get_topic(topic["id"])
+    assert updated["research"]["status"] == "queued"
+    assert updated["research"]["error"] is None
+
+
+def test_synchronous_unpublish_redirects_and_rebuilds_feed(web_app):
+    app, modules = web_app
+    topic = _create_published_topic(modules)
+    response = app.test_client().post(f"/topics/{topic['id']}/unpublish")
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
+    assert modules["storage"].get_topic(topic["id"])["deleted"] is True
+    assert topic["id"] not in modules["config"].GENERATED_FEED_PATH.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("suffix,mime", [(".mp3", "audio/mpeg"), (".m4a", "audio/mp4"), (".wav", "audio/wav"), (".opaque", "application/octet-stream")])
+def test_audio_routes_serve_bytes_and_strip_directory_components(web_app, suffix, mime):
+    app, modules = web_app
+    filename = f"unit-audio{suffix}"
+    (modules["config"].GENERATED_AUDIO_DIR / filename).write_bytes(b"unit-audio")
+    with app.test_client().get(f"/audio/ignored/{filename}") as response:
+        assert response.status_code == 200
+        assert response.mimetype == mime
+        assert response.data == b"unit-audio"
+
+
+def test_missing_audio_is_not_found_and_unknown_image_has_safe_mime(web_app):
+    app, modules = web_app
+    assert app.test_client().get("/audio/missing.mp3").status_code == 404
+    images = modules["config"].GENERATED_IMAGES_DIR
+    images.mkdir(parents=True, exist_ok=True)
+    (images / "cover.opaque-unit-extension").write_bytes(b"unit-image")
+    with app.test_client().get("/images/ignored/cover.opaque-unit-extension") as response:
+        assert response.status_code == 200
+        assert response.mimetype == "application/octet-stream"
+        assert response.data == b"unit-image"
+
+
+def test_feed_route_regenerates_missing_feed(web_app):
+    app, modules = web_app
+    feed = modules["config"].GENERATED_FEED_PATH
+    feed.unlink()
+    with app.test_client().get("/feed.xml") as response:
+        assert response.status_code == 200
+        assert response.mimetype == "application/rss+xml"
+        assert b"<rss" in response.data
+    assert feed.exists()
+
+
 def test_index_hides_internal_debug_details_when_topics_are_rendered(tmp_path, monkeypatch):
     runtime_dir = tmp_path / "runtime"
     _write_runtime_fixture(runtime_dir)
@@ -375,7 +468,7 @@ def test_index_hides_internal_debug_details_when_topics_are_rendered(tmp_path, m
 
     modules = _reload_modules()
     topic = _create_published_topic(modules, prompt="Hide debug details")
-    app = _build_test_app(modules)
+    app = _build_test_app(modules, monkeypatch)
     client = app.test_client()
 
     try:

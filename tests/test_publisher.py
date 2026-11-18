@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+import pytest
+
 
 def _write_runtime_fixture(runtime_dir: Path, *, base_url: str, public_base_url: str, auto_publish: bool) -> None:
     (runtime_dir / "config").mkdir(parents=True, exist_ok=True)
@@ -299,3 +301,87 @@ def test_worker_uses_episode_number_in_artifact_names_and_feed_titles(tmp_path, 
     assert audio_name.startswith("001_")
     assert variant["published_title"] == "Episode 001 — Episode numbering for sorting — Overview"
     assert "Episode 001 — Episode numbering for sorting — Overview" in feed_text
+
+
+@pytest.mark.parametrize("case,message", [("disabled", "disabled variant"), ("no_audio", "before audio is generated"), ("missing", "missing audio file")])
+def test_publish_preconditions_do_not_mutate_state(tmp_path, case, message):
+    from copy import deepcopy
+    from app import config, publisher, storage
+
+    topic = storage.create_topic("Publish guardrails", True, False)
+    variant = topic["variants"]["overview"]
+    if case == "disabled":
+        variant["enabled"] = False
+    elif case == "missing":
+        variant["audio"]["path"] = str(tmp_path / "missing.mp3")
+    state = {"topics": [topic]}
+    original = deepcopy(state)
+    with pytest.raises(RuntimeError, match=message):
+        publisher.publish_topic_variant_in_state(state=state, topic_id=topic["id"], variant_name="overview", config=config.load_config())
+    assert state == original
+
+
+def test_deployment_failure_is_persisted_for_retry(tmp_path, monkeypatch):
+    from app import config, publisher, storage
+
+    topic = storage.create_topic("Deployment recovery", True, False)
+    audio = tmp_path / "001_audio.mp3"
+    audio.write_bytes(b"audio")
+    storage.update_topic(topic["id"], lambda item: item["variants"]["overview"]["audio"].update(path=str(audio), status="done"))
+    cfg = config.load_config()
+    cfg["publishing"].update(target="azure_static", deploy_enabled=True, public_base_url="https://example.com/pod")
+    error = RuntimeError("unit upload failed")
+
+    def fail(**kwargs):
+        raise error
+
+    monkeypatch.setattr(publisher, "deploy_directory_to_azure_static", fail)
+    with pytest.raises(RuntimeError, match="unit upload failed") as exc:
+        publisher.publish_topic_variant(topic["id"], "overview", cfg)
+    assert exc.value is error
+    updated = storage.get_topic(topic["id"])
+    variant = updated["variants"]["overview"]
+    assert updated["status"] == variant["status"] == variant["publish"]["status"] == "failed"
+    assert updated["last_error"] == variant["publish"]["error"] == "unit upload failed"
+    assert variant["publish"]["public_url"] is None
+    assert variant["publish"]["completed_at"] is None
+    assert variant["audio"]["status"] == "done"
+
+
+def test_publish_outputs_reject_unknown_target_and_missing_bundle():
+    from app import config, publisher
+
+    cfg = config.load_config()
+    cfg["publishing"]["target"] = "unsupported"
+    with pytest.raises(RuntimeError, match="Unsupported publishing target"):
+        publisher.rebuild_publish_outputs(cfg)
+    with pytest.raises(RuntimeError, match="requires a local publish bundle"):
+        publisher.deploy_publish_bundle(cfg, {"bundle_dir": None})
+
+
+def test_publishable_audio_filters_incomplete_and_deleted_topics(tmp_path):
+    from copy import deepcopy
+    from app import publisher, storage
+
+    topic = storage.create_topic("Export filtering", True, False)
+    variants = []
+    for index in range(4):
+        item = deepcopy(topic)
+        item["id"] = str(index)
+        item["variants"]["overview"]["publish"]["status"] = "done"
+        variants.append(item)
+    variants[0]["deleted"] = True
+    variants[2]["variants"]["overview"]["audio"]["path"] = str(tmp_path / "missing.mp3")
+    media = tmp_path / "present.mp3"
+    media.write_bytes(b"audio")
+    variants[3]["variants"]["overview"]["audio"]["path"] = str(media)
+    assert [(item[0]["id"], item[3]) for item in publisher._iter_publishable_audio({"topics": variants})] == [("3", media)]
+
+
+def test_export_base_url_falls_back_to_podcast_url(tmp_path):
+    from app import config, publisher
+
+    cfg = config.load_config()
+    cfg["publishing"].update(target="local_export", public_base_url="", export_dir=str(tmp_path / "export"))
+    result = publisher.rebuild_publish_outputs(cfg)
+    assert cfg["podcast"]["base_url"].rstrip("/") + "/feed.xml" in Path(result["feed_path"]).read_text(encoding="utf-8")

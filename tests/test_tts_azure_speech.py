@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 
 class _FakeSpeechConfig:
     def __init__(self, subscription=None, endpoint=None, region=None):
@@ -208,3 +210,78 @@ def test_azure_speech_surfaces_sdk_cancellation_details(tmp_path, monkeypatch):
     finally:
         _FakeSpeechSynthesizer.result_reason = 'completed'
         _FakeSpeechSynthesizer.cancellation_details = None
+
+
+@pytest.mark.parametrize("overrides,text,message", [
+    ({"mode": "batch"}, "hello", "not implemented"),
+    ({"speech_api_key": ""}, "hello", "API key is required"),
+    ({"speech_voice": " "}, "hello", "speech_voice is required"),
+    ({}, " \n\t ", "empty script"),
+])
+def test_azure_speech_validates_before_loading_sdk(tmp_path, monkeypatch, overrides, text, message):
+    from app import tts_azure_speech
+
+    config = {"speech_region": "westus", "speech_api_key": "unit-key", "speech_voice": "unit-voice", **overrides}
+    monkeypatch.setattr(tts_azure_speech, "_load_speechsdk", lambda: pytest.fail("invalid request reached SDK"))
+    with pytest.raises(RuntimeError, match=message):
+        tts_azure_speech.synthesize_text_to_mp3(text, tmp_path / "audio.mp3", config)
+    assert not (tmp_path / "audio.mp3").exists()
+
+
+@pytest.mark.parametrize("reason,content,details,message", [
+    (_FakeSpeechSdk.ResultReason.SynthesizingAudioCompleted, None, None, "no audio file"),
+    (_FakeSpeechSdk.ResultReason.SynthesizingAudioCompleted, b"", None, "empty audio file"),
+    (_FakeSpeechSdk.ResultReason.Canceled, None, SimpleNamespace(), "canceled \\(unknown\\)"),
+    ("unexpected", None, None, "unexpected result reason: unexpected"),
+])
+def test_azure_speech_rejects_unsuccessful_sdk_results(tmp_path, monkeypatch, reason, content, details, message):
+    from app import tts_azure_speech
+
+    output = tmp_path / "audio.mp3"
+
+    def speak(self, text):
+        if content is not None:
+            output.write_bytes(content)
+        return SimpleNamespace(get=lambda: _FakeSynthesisResult(reason, details))
+
+    monkeypatch.setattr(_FakeSpeechSynthesizer, "speak_text_async", speak)
+    monkeypatch.setattr(tts_azure_speech, "_load_speechsdk", lambda: _FakeSpeechSdk)
+    with pytest.raises(RuntimeError, match=message):
+        tts_azure_speech.synthesize_text_to_mp3("hello", output, {
+            "speech_region": "westus", "speech_api_key": "unit-key", "speech_voice": "unit-voice",
+        })
+
+
+def test_azure_speech_exact_duration_limit_and_unknown_output_format(tmp_path, monkeypatch):
+    from app import tts_azure_speech
+
+    monkeypatch.setattr(tts_azure_speech, "_load_speechsdk", lambda: _FakeSpeechSdk)
+    config = {"speech_region": "westus", "speech_api_key": "unit-key", "speech_voice": "unit-voice",
+              "speech_sync_max_minutes": 1, "speech_output_format": "sdk-default"}
+    output = tmp_path / "audio.mp3"
+    meta = tts_azure_speech.synthesize_text_to_mp3("word " * 150, output, config)
+    assert meta["bytes"] == len(output.read_bytes())
+    assert _FakeSpeechSynthesizer.last_call["speech_config"].output_format is None
+    with pytest.raises(RuntimeError, match="exceeds speech_sync_max_minutes=1"):
+        tts_azure_speech.synthesize_text_to_mp3("word " * 151, output, config)
+
+
+def test_azure_speech_sdk_load_and_missing_dependency(monkeypatch):
+    import sys
+    from app import tts_azure_speech
+
+    assert tts_azure_speech._load_speechsdk().SpeechConfig is not None
+    monkeypatch.setitem(sys.modules, "azure.cognitiveservices.speech", None)
+    with pytest.raises(RuntimeError, match="SDK is not installed") as exc:
+        tts_azure_speech._load_speechsdk()
+    assert isinstance(exc.value.__cause__, ImportError)
+
+
+def test_azure_speech_accepts_non_url_endpoint(tmp_path, monkeypatch):
+    from app import tts_azure_speech
+
+    monkeypatch.setattr(tts_azure_speech, "_load_speechsdk", lambda: _FakeSpeechSdk)
+    tts_azure_speech.synthesize_text_to_mp3("hello", tmp_path / "audio.mp3", {
+        "speech_endpoint": " local-endpoint/ ", "speech_api_key": "unit-key", "speech_voice": "unit-voice",
+    })
+    assert _FakeSpeechSynthesizer.last_call["speech_config"].endpoint == "local-endpoint"
